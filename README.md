@@ -1,4 +1,6 @@
-# OpenDroneID Android receiver application
+# RID Guard (fork of OpenDroneID Android receiver)
+
+RID Guard is an offline-first fork of the OpenDroneID Android receiver application. It focuses on local detection of Direct/Broadcast Remote ID drones using BLE, Wi-Fi NAN, and Wi‑Fi Beacon scanning with local alerts (sound/vibration) and no internet requirement.
 
 This project provides the source codes for an example receiver implementation for OpenDroneID Bluetooth, WiFi NAN (Neighbor Aware Network) and WiFi Beacon signals for Android phones.
 The application is compliant with the Bluetooth, WiFi NAN and WiFi Beacon parts of the ASTM F3411 Remote ID standard and the ASD-STAN prEN 4709-002 Direct Remote ID standard.
@@ -9,6 +11,8 @@ The Open Street Map version of the application can be found on the [Google Plays
 
 The application continuously scans for Bluetooth advertising/WiFi NAN signals/beacons.
 If any is found matching the specifiers for OpenDroneID signals, it adds that transmitter to a list, will display the location of the drone on a map and can show the detailed content of the OpenDroneID data.
+
+RID Guard keeps a dedicated changelog for fork-specific changes in [CHANGELOG_RID_GUARD.md](CHANGELOG_RID_GUARD.md).
 
 ![](images/Screenshot.jpg)
 
@@ -22,7 +26,7 @@ In this case, the marker icons look a bit different.
 
 Please note: The user of this receiver application must always visually verify that the received Open Drone ID signal corresponds to an actual drone seen flying in the air, at the position the signal claims it to be.
 
-## How to build
+## How to build (RID Guard)
 
 To build the application, use Android Studio.
 Import the project (File -> New -> Import Project, or just Open on newer versions of Android Studio) and point to the folder named Android.
@@ -52,6 +56,35 @@ https://developers.google.com/maps/documentation/android-sdk/get-api-key
 
 Your own generated Google Maps key must be inserted in:
 `Android/app/src/main/res/values/google_maps_api.xml`
+
+### Signing a release APK
+
+1. Android Studio -> Build -> Generate Signed Bundle / APK.
+2. Create or select a keystore.
+3. Choose the **release** build variant.
+4. Keep the generated APK for sideloading or distribution.
+
+### Sideloading
+
+1. Copy the APK to your phone.
+2. Enable “Install unknown apps” for your file manager or browser.
+3. Open the APK and install.
+
+### Battery optimization (recommended)
+
+To keep scanning reliable:
+
+1. Settings → Apps → RID Guard → Battery.
+2. Set battery usage to **Unrestricted**.
+3. Keep Wi‑Fi and Bluetooth enabled.
+
+### APK downloaden (GitHub Actions)
+
+1. Ga naar GitHub → Actions → open de laatste “Build APK” run.
+2. Download Artifact “RIDGuard-debug-apk”.
+3. Zet op Android “Install unknown apps” aan en installeer de APK.
+4. Tip: Battery Optimization voor RID Guard uitzetten zodat scanning blijft draaien.
+5. Tip: als Wi‑Fi beacon detectie traag is, Developer Options → Wi‑Fi scan throttling uit (alleen als tip).
 
 ## Transmitter Devices
 

@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <PreferenceCategory
+        android:title="@string/rid_guard_alert_rules">
+
+        <ListPreference
+            android:key="ridguard_radius_m"
+            android:title="@string/rid_guard_radius"
+            android:defaultValue="200"
+            android:entries="@array/rid_guard_radius_entries"
+            android:entryValues="@array/rid_guard_radius_values" />
+
+        <SwitchPreferenceCompat
+            android:key="ridguard_altitude_enabled"
+            android:title="@string/rid_guard_altitude_window" />
+
+        <EditTextPreference
+            android:key="ridguard_altitude_min"
+            android:title="@string/rid_guard_altitude_min"
+            android:defaultValue="-50"
+            android:inputType="numberSigned" />
+
+        <EditTextPreference
+            android:key="ridguard_altitude_max"
+            android:title="@string/rid_guard_altitude_max"
+            android:defaultValue="150"
+            android:inputType="numberSigned" />
+
+        <EditTextPreference
+            android:key="ridguard_cooldown_s"
+            android:title="@string/rid_guard_cooldown"
+            android:defaultValue="30"
+            android:inputType="number" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="@string/rid_guard_ignore">
+
+        <EditTextPreference
+            android:key="ridguard_ignore_ids"
+            android:title="@string/rid_guard_ignore_ids"
+            android:summary="@string/rid_guard_ignore_ids_summary" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="@string/rid_guard_logging">
+
+        <EditTextPreference
+            android:key="ridguard_log_retention_hours"
+            android:title="@string/rid_guard_log_retention"
+            android:defaultValue="48"
+            android:inputType="number" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="@string/rid_guard_map">
+
+        <SwitchPreferenceCompat
+            android:key="ridguard_map_enabled"
+            android:title="@string/rid_guard_map_toggle"
+            android:summary="@string/rid_guard_map_toggle_summary" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="@string/rid_guard_tips">
+
+        <Preference
+            android:title="@string/rid_guard_location_tip_title"
+            android:summary="@string/rid_guard_location_tip" />
+
+        <Preference
+            android:title="@string/rid_guard_wifi_tip_title"
+            android:summary="@string/rid_guard_wifi_tip" />
+    </PreferenceCategory>
+
+</PreferenceScreen>
