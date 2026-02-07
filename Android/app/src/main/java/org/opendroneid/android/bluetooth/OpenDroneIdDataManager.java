@@ -34,6 +34,7 @@ public class OpenDroneIdDataManager {
 
     public static class Callback {
         public void onNewAircraft(AircraftObject object) {}
+        public void onAircraftUpdated(AircraftObject object) {}
     }
 
     public OpenDroneIdDataManager(Callback callback) {
@@ -108,6 +109,7 @@ public class OpenDroneIdDataManager {
 
         // Restore the msgVersion in case the messages embedded in the pack had a different value
         logMessageEntry.setMsgVersion(ac.getConnection().getMsgVersion());
+        callback.onAircraftUpdated(ac);
     }
 
     @SuppressWarnings("unchecked")

@@ -35,6 +35,9 @@ import org.opendroneid.android.data.AircraftObject;
 import org.opendroneid.android.data.Connection;
 import org.opendroneid.android.data.Identification;
 import org.opendroneid.android.data.LocationData;
+import org.opendroneid.android.ridguard.RidGuardDroneUtils;
+import org.opendroneid.android.ridguard.RidGuardRepository;
+import org.opendroneid.android.ridguard.RidGuardSettings;
 import com.mikepenz.fastadapter.FastAdapter;
 import com.mikepenz.fastadapter.adapters.ModelAdapter;
 import com.mikepenz.fastadapter.commons.utils.FastAdapterUIUtils;
@@ -149,22 +152,32 @@ public class DeviceList extends Fragment {
     public class AircraftViewHolder extends FastAdapter.ViewHolder<ListItem> {
         private final TextView textView;
         private final TextView textView2;
+        private final TextView metricsView;
         private final TextView rssiView;
         private AircraftObject aircraft;
         private final View view;
         private final ImageView iconImageView;
         private final Drawable droneIcon;
+        private final RidGuardSettings ridGuardSettings;
 
         AircraftViewHolder(View v) {
             super(v);
             this.view = v;
             textView = v.findViewById(R.id.aircraftName);
             textView2 = v.findViewById(R.id.aircraftFun);
+            metricsView = v.findViewById(R.id.aircraftMetrics);
             rssiView = v.findViewById(R.id.rssi);
+            ridGuardSettings = new RidGuardSettings(v.getContext());
 
             Button button = v.findViewById(R.id.modButton);
             button.setText(R.string.info);
             button.setOnClickListener(v1 -> showDetails(aircraft));
+
+            Button ignoreButton = v.findViewById(R.id.ignoreButton);
+            ignoreButton.setOnClickListener(v12 -> {
+                String id = RidGuardDroneUtils.getPrimaryId(aircraft);
+                ridGuardSettings.ignoreTemporarily(id, 30);
+            });
 
             droneIcon = ContextCompat.getDrawable(requireActivity(), R.mipmap.ic_plane_icon);
             iconImageView = v.findViewById(R.id.drone_icon);
@@ -204,12 +217,17 @@ public class DeviceList extends Fragment {
             aircraft.id2Shadow.removeObserver(observer);
             aircraft.connection.removeObserver(connectionObserver);
             aircraft.location.removeObserver(locationObserver);
+            textView.setText(null);
+            textView2.setText(null);
+            metricsView.setText(null);
         }
         final Observer<Connection> connectionObserver = new Observer<Connection>() {
             @Override
             public void onChanged(Connection connection) {
-                if (connection != null)
+                if (connection != null) {
                     rssiView.setText(String.format(Locale.US, "%s dBm", connection.rssi));
+                    updateMetrics(connection, aircraft.getLocation());
+                }
             }
         };
         final Observer<LocationData> locationObserver = new Observer<LocationData>() {
@@ -222,6 +240,7 @@ public class DeviceList extends Fragment {
                             locationData.getHeightType().toString(),
                             locationData.getSpeedHorizontalLessPreciseAsString(res),
                             locationData.getDistanceAsString()));
+                    updateMetrics(aircraft.getConnection(), locationData);
                 }
             }
         };
@@ -239,6 +258,33 @@ public class DeviceList extends Fragment {
                 }
             }
         };
+
+        private void updateMetrics(Connection connection, LocationData locationData) {
+            float distance = locationData != null ? locationData.getDistance() : 0f;
+            String distanceText = distance > 0 ? String.format(Locale.US, "%.0f m", distance) : "–";
+            Double altitudeDiff = null;
+            if (locationData != null) {
+                double droneAlt = locationData.getAltitudeGeodetic();
+                if (droneAlt == -1000) {
+                    droneAlt = locationData.getAltitudePressure();
+                }
+                if (droneAlt != -1000 && RidGuardRepository.getInstance(requireContext()).getReceiverLocation() != null) {
+                    altitudeDiff = droneAlt - RidGuardRepository.getInstance(requireContext()).getReceiverLocation().getAltitude();
+                }
+            }
+            String altitudeText = altitudeDiff != null ? String.format(Locale.US, "%.0f m", altitudeDiff) : "–";
+            String speedText = locationData != null && locationData.getSpeedHorizontal() != 255
+                    ? String.format(Locale.US, "%.1f m/s", locationData.getSpeedHorizontal()) : "–";
+            String headingText = locationData != null && locationData.getDirection() != 361
+                    ? String.format(Locale.US, "%.0f°", locationData.getDirection()) : "–";
+            long lastSeen = connection != null ? connection.lastSeen : 0L;
+            String lastSeenText = lastSeen > 0
+                    ? String.format(Locale.US, "%ds", Math.max(0, (System.currentTimeMillis() - lastSeen) / 1000))
+                    : "–";
+            metricsView.setText(String.format(Locale.US,
+                    "%s · Δalt %s · v %s · hdg %s · %s",
+                    distanceText, altitudeText, speedText, headingText, lastSeenText));
+        }
     }
 
     public class ListItem extends AbstractItem<ListItem, AircraftViewHolder> {

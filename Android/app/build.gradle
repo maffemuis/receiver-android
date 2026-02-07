@@ -12,7 +12,7 @@ android {
     compileSdk 36
 
     defaultConfig {
-        applicationId "org.opendroneid.android"
+        applicationId "org.opendroneid.ridguard"
         minSdkVersion 21
         targetSdkVersion 35
         versionCode versionMajor * 10000 + versionMinor * 100 + versionPatch
@@ -53,14 +53,13 @@ android {
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 
-    def support_version = "30.0.0"
     implementation 'androidx.legacy:legacy-support-v4:1.0.0'
     implementation 'com.google.android.material:material:1.12.0'
     implementation 'com.mikepenz:fastadapter:3.3.1'
     implementation 'com.mikepenz:fastadapter-commons:3.3.1'
-    implementation 'com.android.support:recyclerview-v7:' + support_version
-    implementation 'com.android.support:appcompat-v7:' + support_version
-    implementation 'com.android.support:support-fragment:' + support_version
+    implementation 'androidx.recyclerview:recyclerview:1.4.0'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'androidx.fragment:fragment:1.8.8'
     implementation 'androidx.constraintlayout:constraintlayout:2.2.1'
     implementation 'androidx.lifecycle:lifecycle-extensions:2.2.0'
     implementation 'pub.devrel:easypermissions:3.0.0'
