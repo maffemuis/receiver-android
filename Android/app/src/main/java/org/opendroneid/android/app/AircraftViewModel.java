@@ -33,7 +33,7 @@ public class AircraftViewModel extends ViewModel {
         return selected;
     }
 
-    void setAllAircraft(ConcurrentHashMap<Long, AircraftObject> objects) {
+    public void setAllAircraft(ConcurrentHashMap<Long, AircraftObject> objects) {
         aircraft.postValue(new HashSet<>(objects.values()));
     }
 
