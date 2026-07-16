@@ -1,18 +1,9 @@
 /*
  * Copyright (C) 2021 Skydio Inc
  * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
  *
- *  http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License. *
+ * SPDX-License-Identifier: Apache-2.0
  */
-
 package org.opendroneid.android.bluetooth;
 
 import android.Manifest;
@@ -27,10 +18,12 @@ import android.os.Build;
 import android.os.CountDownTimer;
 import android.os.SystemClock;
 import android.util.Log;
-import android.widget.Toast;
 
 import androidx.annotation.RequiresApi;
-import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
+import org.opendroneid.android.log.LogMessageEntry;
+import org.opendroneid.android.log.LogWriter;
 
 import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
@@ -39,78 +32,84 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
-import org.opendroneid.android.log.LogMessageEntry;
-import org.opendroneid.android.log.LogWriter;
-
 public class WiFiBeaconScanner {
-    private static final int CIDLen = 3;
-    private static final int DriStartByteOffset = 4;
-    private static final int ScanTimerInterval = 2;
+    private static final int CID_LEN = 3;
+    private static final int DRI_START_BYTE_OFFSET = 4;
+    private static final int SCAN_TIMER_INTERVAL_SECONDS = 10;
     private static final int[] DRI_CID = {0xFA, 0x0B, 0xBC};
-    private static final int VendorTypeLen = 1;
-    private static final int VendorTypeValue = 0x0D;
-    private boolean WiFiScanEnabled = true;
+    private static final int VENDOR_TYPE_LEN = 1;
+    private static final int VENDOR_TYPE_VALUE = 0x0D;
+    private static final String TAG = WiFiBeaconScanner.class.getSimpleName();
+
     private final OpenDroneIdDataManager dataManager;
+    private final Context context;
+    private final String startTime;
+    private final BroadcastReceiver scanResultsReceiver;
     private LogWriter logger;
     private WifiManager wifiManager;
-    Context context;
-    int scanSuccess;
-    int scanFailed;
-    final String startTime;
-    CountDownTimer countDownTimer;
-    boolean beaconScanDebugEnable;
+    private CountDownTimer countDownTimer;
+    private boolean receiverRegistered;
+    private boolean wifiScanSupported = true;
+    private int scanSuccess;
+    private int scanFailed;
+    private String lastError;
 
-    private static final String TAG = WiFiBeaconScanner.class.getSimpleName();
+    public WiFiBeaconScanner(Context context, OpenDroneIdDataManager dataManager, LogWriter logger) {
+        this.context = context.getApplicationContext();
+        this.dataManager = dataManager;
+        this.logger = logger;
+        this.startTime = getCurrTimeStr();
+
+        scanResultsReceiver = new BroadcastReceiver() {
+            @RequiresApi(api = Build.VERSION_CODES.M)
+            @Override
+            public void onReceive(Context receiverContext, Intent intent) {
+                handleScanResults(intent);
+            }
+        };
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M
+                || !this.context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_WIFI)) {
+            wifiScanSupported = false;
+            lastError = "Wi-Fi beacon scanning is not supported";
+            return;
+        }
+
+        wifiManager = (WifiManager) this.context.getSystemService(Context.WIFI_SERVICE);
+        if (wifiManager == null) {
+            wifiScanSupported = false;
+            lastError = "Android did not provide a Wi-Fi manager";
+            return;
+        }
+
+        IntentFilter filter = new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION);
+        ContextCompat.registerReceiver(this.context, scanResultsReceiver, filter,
+                ContextCompat.RECEIVER_NOT_EXPORTED);
+        receiverRegistered = true;
+    }
 
     public void setLogger(LogWriter logger) {
         this.logger = logger;
     }
 
-    public WiFiBeaconScanner(Context context, OpenDroneIdDataManager dataManager, LogWriter logger) {
-        this.dataManager = dataManager;
-        this.logger = logger;
-
-        this.startTime = getCurrTimeStr();
-
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M ||
-                !context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_WIFI)) {
-            Toast.makeText(context, "WiFi Scanning is not supported", Toast.LENGTH_LONG).show();
-            WiFiScanEnabled = false;
-            return;
-        }
-
-        this.context = context;
-        beaconScanDebugEnable = false;
-
-        wifiManager = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-        if (!wifiManager.isWifiEnabled()) {
-            Log.d(TAG, "Turning on Wi-Fi");
-            wifiManager.setWifiEnabled(true);
-        }
-        IntentFilter filter = new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION);
-
-        BroadcastReceiver myReceiver = new BroadcastReceiver() {
-            @RequiresApi(api = Build.VERSION_CODES.M)
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                handleScanResults(intent);
-            }
-        };
-
-        context.registerReceiver(myReceiver, filter);
+    public String getLastError() {
+        return lastError;
     }
 
     void processRemoteIdVendorIE(ScanResult scanResult, ByteBuffer buf) {
-        if (buf.remaining() < 30)
+        if (buf == null || buf.remaining() < 30) {
             return;
-        byte[] dri_CID = new byte[CIDLen];
+        }
+        byte[] driCid = new byte[CID_LEN];
         byte[] arr = new byte[buf.remaining()];
-        buf.get(dri_CID, 0, CIDLen);
-        byte[] vendorType = new byte[VendorTypeLen];
+        buf.get(driCid, 0, CID_LEN);
+        byte[] vendorType = new byte[VENDOR_TYPE_LEN];
         buf.get(vendorType);
-        if ((dri_CID[0] & 0xFF) == DRI_CID[0] && (dri_CID[1] & 0xFF) == DRI_CID[1] &&
-                (dri_CID[2] & 0xFF) == DRI_CID[2] && vendorType[0] == VendorTypeValue) {
-            buf.position(DriStartByteOffset);
+        if ((driCid[0] & 0xFF) == DRI_CID[0]
+                && (driCid[1] & 0xFF) == DRI_CID[1]
+                && (driCid[2] & 0xFF) == DRI_CID[2]
+                && vendorType[0] == VENDOR_TYPE_VALUE) {
+            buf.position(DRI_START_BYTE_OFFSET);
             buf.get(arr, 0, buf.remaining());
             LogMessageEntry logMessageEntry = new LogMessageEntry();
             long timeNano = SystemClock.elapsedRealtimeNanos();
@@ -118,132 +117,149 @@ public class WiFiBeaconScanner {
             dataManager.receiveDataWiFiBeacon(arr, scanResult.BSSID, scanResult.BSSID.hashCode(),
                     scanResult.level, timeNano, logMessageEntry, transportType);
 
-            Log.i(TAG, "Beacon: " + scanResult.BSSID + ": " + Arrays.toString(arr));
+            Log.i(TAG, "Remote ID Wi-Fi beacon: " + scanResult.BSSID + ": " + Arrays.toString(arr));
             StringBuilder csvLog = logMessageEntry.getMessageLogEntry();
-            if (logger != null)
-                logger.logBeacon(logMessageEntry.getMsgVersion(), timeNano, scanResult, arr, transportType, csvLog);
+            if (logger != null) {
+                logger.logBeacon(logMessageEntry.getMsgVersion(), timeNano, scanResult, arr,
+                        transportType, csvLog);
+            }
         }
     }
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     void handleScanResults(Intent intent) {
-        if (wifiManager == null) {
-            Toast.makeText(context, "WiFi beacon scanner attach failed.", Toast.LENGTH_LONG).show();
+        if (wifiManager == null || intent == null) {
             return;
         }
         boolean freshScanResult = intent.getBooleanExtra(WifiManager.EXTRA_RESULTS_UPDATED, false);
-        String action = intent.getAction();
-        if (freshScanResult && WifiManager.SCAN_RESULTS_AVAILABLE_ACTION.equals(action)) {
-            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                Log.e(TAG, "handleScanResults: Missing location permission");
-                return;
-            }
+        if (!freshScanResult || !WifiManager.SCAN_RESULTS_AVAILABLE_ACTION.equals(intent.getAction())) {
+            return;
+        }
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            lastError = "Location permission is required for Wi-Fi beacon results";
+            return;
+        }
+
+        try {
             List<ScanResult> wifiList = wifiManager.getScanResults();
             for (ScanResult scanResult : wifiList) {
                 try {
                     handleResult(scanResult);
-                } catch (NoSuchFieldException | IllegalAccessException e) {
-                    e.printStackTrace();
+                } catch (NoSuchFieldException | IllegalAccessException exception) {
+                    Log.w(TAG, "Unable to inspect Wi-Fi information elements", exception);
                 }
             }
-            startScan();
+        } catch (SecurityException exception) {
+            lastError = "Wi-Fi scan results were blocked by Android";
+            Log.w(TAG, lastError, exception);
         }
     }
 
     void handleResult(ScanResult scanResult) throws NoSuchFieldException, IllegalAccessException {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-            // On earlier Android APIs, the information element field is hidden.
-            // Use reflection to access it.
             Object value = ScanResult.class.getField("informationElements").get(scanResult);
             ScanResult.InformationElement[] elements = (ScanResult.InformationElement[]) value;
-            if (elements == null)
+            if (elements == null) {
                 return;
+            }
             for (ScanResult.InformationElement element : elements) {
-                if (element == null)
+                if (element == null) {
                     continue;
+                }
                 Object valueId = element.getClass().getField("id").get(element);
-                if (valueId == null)
+                if (!(valueId instanceof Integer) || ((Integer) valueId) != 221) {
                     continue;
-                int id = (int) valueId;
-                if (id == 221) {
-                    Object valueBytes = element.getClass().getField("bytes").get(element);
-                    if (valueBytes == null)
-                        continue;
-                    ByteBuffer buf = ByteBuffer.wrap(((byte[]) valueBytes)).asReadOnlyBuffer();
-                    processRemoteIdVendorIE(scanResult, buf);
+                }
+                Object valueBytes = element.getClass().getField("bytes").get(element);
+                if (valueBytes instanceof byte[]) {
+                    processRemoteIdVendorIE(scanResult,
+                            ByteBuffer.wrap((byte[]) valueBytes).asReadOnlyBuffer());
                 }
             }
         } else {
             for (ScanResult.InformationElement element : scanResult.getInformationElements()) {
                 if (element != null && element.getId() == 221) {
-                    ByteBuffer buf = element.getBytes();
-                    processRemoteIdVendorIE(scanResult, buf);
+                    processRemoteIdVendorIE(scanResult, element.getBytes());
                 }
             }
         }
     }
 
-    public void startScan() {
-        if (!WiFiScanEnabled) {
-            return;
+    public boolean startScan() {
+        if (!wifiScanSupported || wifiManager == null) {
+            return false;
         }
-        boolean ret = wifiManager.startScan();
-        if (ret) {
-            scanSuccess++;
-        } else {
+        if (!wifiManager.isWifiEnabled()) {
+            lastError = "Wi-Fi is turned off; Bluetooth scanning remains active";
+            return false;
+        }
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            lastError = "Location permission is required for Wi-Fi beacon scanning";
+            return false;
+        }
+        try {
+            boolean started = wifiManager.startScan();
+            if (started) {
+                scanSuccess++;
+                lastError = null;
+            } else {
+                scanFailed++;
+                lastError = "Wi-Fi scan was throttled by Android";
+            }
+            printScanStats(started);
+            return started;
+        } catch (SecurityException exception) {
             scanFailed++;
+            lastError = "Wi-Fi scan permission was rejected by Android";
+            Log.w(TAG, lastError, exception);
+            return false;
         }
-        Log.d(TAG, "start_scan:" + ret);
-        printScanStats(ret);
     }
 
-    public void stopScan() {
-        if (!WiFiScanEnabled) {
+    public void startCountDownTimer() {
+        if (!wifiScanSupported || countDownTimer != null) {
             return;
         }
-        if (countDownTimer != null) {
-            countDownTimer.cancel();
-        }
-        Log.d(TAG, "Stopping WiFi Beacon scanning");
-    }
-
-    // There are 2 ways to control WiFi scan:
-    // Continuous scan: Calls startSCan() from scan completion callback
-    // Periodic scan: countdown timer triggers startScan after expiry of the timer.
-    // If phone is debug mode and scan throttling is off, scan is triggered from onReceive() callback.
-    // But if scan throttling is turned on on the phone (default setting on the phone), then scan throttling kick in.
-    // In case of throttling, startScan() fails. We need timer thread to periodically kick off scanning.
-    public void startCountDownTimer() {
-        countDownTimer = new CountDownTimer(Long.MAX_VALUE, ScanTimerInterval * 1000) {
-            // This is called after every ScanTimerInterval sec.
+        countDownTimer = new CountDownTimer(Long.MAX_VALUE, SCAN_TIMER_INTERVAL_SECONDS * 1000L) {
+            @Override
             public void onTick(long millisUntilFinished) {
                 startScan();
             }
 
+            @Override
             public void onFinish() {
+                countDownTimer = null;
             }
         }.start();
+        startScan();
+    }
+
+    public void stopScan() {
+        if (countDownTimer != null) {
+            countDownTimer.cancel();
+            countDownTimer = null;
+        }
+        if (receiverRegistered) {
+            try {
+                context.unregisterReceiver(scanResultsReceiver);
+            } catch (IllegalArgumentException ignored) {
+                // Receiver was already removed by Android.
+            }
+            receiverRegistered = false;
+        }
+        Log.d(TAG, "Wi-Fi beacon scanning stopped");
     }
 
     private String getCurrTimeStr() {
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault());
-        return sdf.format(new Date());
+        return new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
     }
 
-    private void printScanStats(boolean ret) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Started: ").append(startTime).append(" success: ").append(scanSuccess);
-        sb.append(", failed: ").append(scanFailed).append(" curr-time: ");
-        sb.append(getCurrTimeStr()).append(", curr-status: ").append(ret);
-
-        Log.d(TAG, sb.toString());
-
-        if (beaconScanDebugEnable) {
-            Toast.makeText(context, sb, Toast.LENGTH_LONG).show();
-        }
-    }
-
-    public void SetBeaconScanDebug(boolean enable) {
-        beaconScanDebugEnable = enable;
+    private void printScanStats(boolean started) {
+        Log.d(TAG, "Started: " + startTime
+                + " success: " + scanSuccess
+                + ", failed: " + scanFailed
+                + ", current: " + started);
     }
 }
