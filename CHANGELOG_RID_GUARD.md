@@ -1,24 +1,25 @@
 # RID Guard Changelog
 
-## 3.7.0 - Android 16 and release readiness
+## 3.7.1 (test)
+- Replaced the fixed split-screen layout with one clear scrollable phone layout.
+- Removed the duplicate in-content app title and compacted the status area.
+- Added separate sections for phone checks, radar, map and detected drones.
+- Added a proper empty state instead of a large blank drone-list area.
+- Increased the usable radar and map height without allowing sections to overlap.
+- Automatically centers and zooms the OpenStreetMap view on the first phone location fix.
+- Added a persistent **Mijn locatie** button and on-map zoom controls.
+- Keeps the user's map position unless a drone is selected explicitly.
+- Added a stable cached signing identity for the separate debug application package.
 
-- Target Android 16 (API 36) and keep the production package ID stable for future updates.
-- Add a separate `.debug` application ID so test builds can be installed next to the stable app.
-- Add secure GitHub Release publishing for a permanently signed `RID-Guard.apk`.
-- Add automated unit tests, APK builds, checksums and visible build status for pull requests.
-- Start the foreground service before scanner initialization, with Android 16-compatible location service typing.
-- Add notification actions to open RID Guard, mute alerts for 30 minutes and stop scanning.
-- Treat Bluetooth detection as the reliable baseline while Wi-Fi Beacon and Wi-Fi Aware remain optional transports.
-- Stop attempting to enable Wi-Fi programmatically and improve scanner cleanup, receiver registration and error handling.
-- Add guided permission handling for Bluetooth, nearby devices, precise location and notifications.
-- Add phone diagnostics for Bluetooth, claimed Bluetooth 5 Long Range support, Wi-Fi, Wi-Fi Aware, location, app permissions and battery optimization.
-- Add direct shortcuts to application permissions and battery settings.
-- Redesign the main screen for modern phones and add Dutch RID Guard controls and status messages.
-- Disable Android application backups and retain privacy-preserving hashed identifiers in local logs.
-- Add Samsung Galaxy S23 / Android 16 installation and setup documentation.
+## 3.7.0 (test)
+- Targeted Android 16 / API 36 and introduced a separate debug application ID.
+- Added Android 16-safe foreground scanning and notification controls.
+- Added guided permissions, Bluetooth/location recovery and phone diagnostics.
+- Made Bluetooth the required baseline while Wi-Fi Beacon and Wi-Fi Aware remain optional.
+- Hardened scanner errors, cleanup, local alerts and hashed offline logging.
+- Added automated unit tests, APK builds and a secure signed release workflow.
 
-## Initial RID Guard fork
-
+## Earlier work
 - Added foreground scanning service with persistent notification for RID Guard.
 - Added RID Guard activity with radar view, status, and drone list metrics.
 - Added alert rules, ignore controls, and offline logging with hashed IDs.
