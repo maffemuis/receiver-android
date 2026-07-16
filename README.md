@@ -1,94 +1,76 @@
 # RID Guard
 
-RID Guard is an offline-first Android receiver for Direct/Broadcast Remote ID. It is based on the OpenDroneID Android receiver and is focused on practical local use: detecting nearby drones, showing received telemetry, warning within a configured radius and continuing to scan while the screen is off.
+RID Guard is an offline-first Android receiver for Direct/Broadcast Remote ID drones. It receives supported Remote ID broadcasts locally through Bluetooth LE, Wi-Fi Beacon and Wi-Fi Aware/NAN. Internet is not required for detection; only the optional OpenStreetMap tiles use internet.
 
-Detection does not require an internet connection. Internet is only used when the optional OpenStreetMap view is enabled.
+The project is based on the OpenDroneID Android receiver and supports the Bluetooth, Wi-Fi NAN and Wi-Fi Beacon message formats used by ASTM F3411 and ASD-STAN Direct Remote ID.
 
-## Main features
+> Always visually verify that a received Remote ID signal corresponds to a drone actually visible near the reported position.
 
-- Bluetooth 4 Legacy Remote ID reception
-- Bluetooth 5 Long Range / Extended Advertising reception when the phone and driver support it
-- Wi-Fi Beacon reception when Wi-Fi and Android scanning allow it
-- Wi-Fi Aware/NAN reception on supported phones
-- foreground scanning service with a permanent Android notification
-- notification actions for muting alerts and stopping detection
-- radar, drone list and optional OpenStreetMap view
-- configurable radius, altitude window, alert cooldown and ignored drone IDs
-- local CSV logging with hashed identifiers and automatic retention
-- phone diagnostics for Bluetooth, Long Range, Wi-Fi, Wi-Fi Aware, location, permissions and battery optimization
+## Current RID Guard functions
 
-The application follows the Bluetooth, Wi-Fi NAN and Wi-Fi Beacon transport parts used by ASTM F3411 and ASD-STAN Direct Remote ID implementations.
+- Bluetooth Legacy Remote ID reception as the baseline transport
+- Bluetooth 5 Long Range/Extended Advertising when the phone really supports reception
+- optional Wi-Fi Beacon and Wi-Fi Aware/NAN reception
+- foreground scanning with a permanent Android notification
+- local sound and vibration alerts
+- configurable alert radius, altitude window and cooldown
+- temporary and manual ignore rules
+- radar, OpenStreetMap and detected-drone details
+- hashed offline CSV logging with automatic retention cleanup
+- no account and no internet dependency for detection
 
-> Always visually verify that a received Remote ID position corresponds to an aircraft that is actually present. A receiver displays transmitted data; it cannot prove that the transmitter or its data is trustworthy.
+## Samsung Galaxy S23 / Android 16
 
-## Installing RID Guard
+RID Guard 3.7 targets Android 16 (API 36). On a Galaxy S23:
 
-### Stable release
+1. Keep **Bluetooth** and **Location** enabled.
+2. Enable **Wi-Fi** when Wi-Fi Beacon or Wi-Fi Aware reception is wanted.
+3. Grant precise location, nearby-device/Bluetooth and notification permissions.
+4. Open the RID Guard **Battery** button and exclude the app from battery optimization.
+5. In Samsung settings, add RID Guard to apps that never sleep when reliable screen-off scanning is required.
+6. Developer options → disabling Wi-Fi scan throttling can improve Wi-Fi Beacon scan frequency.
 
-After release signing has been configured, every published version contains a directly installable file named `RID-Guard.apk`:
+The phone status panel shows claimed device support. A green capability check does not prove that the phone firmware receives every Bluetooth Long Range transmission continuously; that still requires a real transmitter test.
 
-[Open the latest RID Guard release](https://github.com/maffemuis/receiver-android/releases/latest)
+## Map behavior
 
-On Android:
+The OpenStreetMap view automatically centers and zooms to the phone when the first location fix becomes available. After manually moving the map, use **Mijn locatie** to return immediately. Selecting a detected drone centers the map on that drone. On-map zoom controls and pinch-to-zoom are both enabled.
 
-1. Download `RID-Guard.apk`.
-2. Allow **Install unknown apps** for the browser or file manager used to open it.
-3. Open the APK and install it.
-4. Later releases can be installed as updates without removing the app, provided the same release signing key is retained.
+## Installing a test APK
 
-The production package name is `org.opendroneid.ridguard`.
+Feature branches and pull requests run `.github/workflows/android-apk.yml`. A successful run provides an artifact containing:
 
-### Test APK from GitHub Actions
+- `RID-Guard-test.apk`
+- `RID-Guard-test.apk.sha256`
 
-Every push and pull request builds a temporary test APK:
+The debug application ID is `org.opendroneid.ridguard.debug`, so the test app can exist next to the later production app.
 
-1. Open **Actions** → **Android test build**.
-2. Open the newest successful run.
-3. Download the artifact named `RID-Guard-test-<run number>`.
-4. Extract the ZIP and install `RID-Guard-test.apk`.
+The test workflow keeps its test-only debug signing identity in the GitHub Actions cache. The first 3.7.1 test APK using this setup may require removing an older RID Guard test build once. Subsequent cached test builds should install as normal updates. This test identity is never used for the production release.
 
-The test package uses `org.opendroneid.ridguard.debug`, so it can be installed next to the stable version. Test APKs are temporary and are not a replacement for a signed release.
+To sideload on Samsung:
 
-## First setup on a Samsung Galaxy S23 / Android 16
-
-1. Open RID Guard and tap **Detectie starten**.
-2. Allow **Apparaten in de buurt** and **Precieze locatie**.
-3. Notification permission is recommended but does not block detection.
-4. Keep Bluetooth enabled. Wi-Fi is optional for Bluetooth detection but required for Wi-Fi Beacon and Wi-Fi Aware/NAN.
-5. Open **Batterij** in RID Guard and add the app to Samsung's apps that never sleep, or set battery use to unrestricted.
-6. Keep Android location services enabled while scanning.
-
-The diagnostics card shows what the phone currently reports. A Long Range check mark only confirms Android feature flags; actual Bluetooth 5 Long Range reception still needs a real transmitter test.
-
-If Wi-Fi Beacon reception is slow, Android developer options can be used to disable **Wi-Fi scan throttling**. This is optional and increases battery use.
+1. Download the APK on the phone.
+2. Open it using **Mijn bestanden**.
+3. When Android blocks the installation, allow **Install unknown apps** for Mijn bestanden.
+4. Install and open RID Guard.
+5. Use **Apprechten** and **Batterij** in the app to finish setup.
 
 ## Building locally
 
-Requirements:
-
-- Android Studio with Android SDK 36
-- JDK 17
-
-Open the `Android` directory as the Android Studio project, or build from a terminal:
+Open the `Android` directory as a project in Android Studio, or run:
 
 ```bash
 cd Android
 ./gradlew testDebugUnitTest assembleDebug
 ```
 
-The debug APK is written to:
+The default map implementation is OpenStreetMap and requires no API key.
 
-```text
-Android/app/build/outputs/apk/debug/app-debug.apk
-```
+## Publishing a permanent signed APK
 
-RID Guard uses OpenStreetMap in its current main screen, so no map API key is required for the normal build.
+Never publish recurring builds with changing keys. Android only accepts an APK as an update when it uses the same application ID and signing key as the installed version.
 
-## One-time release signing setup
-
-Android only accepts an APK as an update when it is signed with the same private key as the installed version. The release key must therefore be created once, backed up safely and never committed to this public repository.
-
-### 1. Generate the keystore
+Create one permanent release keystore and keep at least two secure backups outside the repository:
 
 ```bash
 keytool -genkeypair -v \
@@ -99,86 +81,49 @@ keytool -genkeypair -v \
   -validity 10000
 ```
 
-Keep at least two secure offline backups. Losing this file means future versions cannot update existing installations.
-
-### 2. Convert it to Base64
-
-Linux/macOS:
+Convert the keystore to one base64 line:
 
 ```bash
-base64 -w 0 ridguard-release.jks > ridguard-release.jks.base64
+base64 -w 0 ridguard-release.jks
 ```
 
-PowerShell:
+Create these GitHub Actions repository secrets:
 
-```powershell
-[Convert]::ToBase64String([IO.File]::ReadAllBytes("ridguard-release.jks")) |
-  Set-Content -NoNewline ridguard-release.jks.base64
-```
+- `RIDGUARD_KEYSTORE_BASE64`
+- `RIDGUARD_KEYSTORE_PASSWORD`
+- `RIDGUARD_KEY_ALIAS`
+- `RIDGUARD_KEY_PASSWORD`
 
-### 3. Add GitHub Actions secrets
-
-In the repository, open **Settings → Secrets and variables → Actions** and add:
-
-- `RIDGUARD_KEYSTORE_BASE64` — contents of `ridguard-release.jks.base64`
-- `RIDGUARD_KEYSTORE_PASSWORD` — keystore password
-- `RIDGUARD_KEY_ALIAS` — normally `ridguard`
-- `RIDGUARD_KEY_PASSWORD` — key password
-
-### 4. Publish a version
-
-Either push a version tag:
+Then push a version tag matching the Gradle version, for example:
 
 ```bash
-git tag v3.7.0
-git push origin v3.7.0
+git tag v3.7.1
+git push origin v3.7.1
 ```
 
-or run **Publish signed Android release** manually and enter a tag such as `v3.7.0`.
+`.github/workflows/android-release.yml` will:
 
-The workflow tests the release, signs it, verifies the signature, creates a SHA-256 checksum and publishes `RID-Guard.apk` through GitHub Releases.
+1. restore the private keystore only inside the runner;
+2. run release unit tests;
+3. build and verify the signed APK;
+4. publish `RID-Guard.apk` and its SHA-256 file in GitHub Releases.
 
-For local signed builds, create `Android/keystore.properties` with:
+The release key must never be committed, shared publicly or regenerated after users install the production app.
 
-```properties
-storeFile=/absolute/path/to/ridguard-release.jks
-storePassword=your-store-password
-keyAlias=ridguard
-keyPassword=your-key-password
-```
+## Google Maps variant
 
-`keystore.properties`, keystores and APK files are ignored by Git.
+Both map implementations remain compiled, but RID Guard defaults to OpenStreetMap. Google Maps requires a Google Maps API key in:
 
-## Privacy and battery behavior
+`Android/app/src/main/res/values/google_maps_api.xml`
 
-- Remote ID processing happens on the phone.
-- The detection engine works offline.
-- Logged identifiers are shortened SHA-256 hashes rather than raw drone IDs.
-- Android backups are disabled for the application.
-- Foreground scanning uses more power because Bluetooth, location and optional Wi-Fi scanning remain active.
-- The persistent notification makes active background scanning visible and provides Stop and Mute actions.
+The key must be configured for the certificate used to sign the relevant APK.
 
-## Transmitter devices
+## Compatibility
 
-A list of transmitter devices that can be used for testing is available in [transmitter-devices.md](transmitter-devices.md).
+See [supported-smartphones.md](supported-smartphones.md) for community test results and testing notes. The list is historical and phone firmware updates may improve or reduce reception.
 
-## Smartphone compatibility
+See [transmitter-devices.md](transmitter-devices.md) for example Remote ID transmitter devices.
 
-The community-maintained compatibility table is available in [supported-smartphones.md](supported-smartphones.md). Hardware feature flags are only an initial indication. Phone firmware can claim Bluetooth Long Range support while failing to receive Coded PHY advertisements, or it can scan intermittently because of vendor power management.
+## Changelog
 
-In general:
-
-- Bluetooth Legacy advertisements should work on normal Android BLE phones.
-- Bluetooth 5 Long Range reception requires Coded PHY and Extended Advertising receiver support.
-- Wi-Fi Beacon requires Android 6 or newer and is affected by Wi-Fi scan throttling.
-- Wi-Fi Aware/NAN requires explicit hardware and firmware support.
-
-## Upstream projects
-
-- [OpenDroneID receiver-android](https://github.com/opendroneid/receiver-android)
-- [opendroneid-core-c](https://github.com/opendroneid/opendroneid-core-c)
-- [OpenStreetMap attribution](https://www.openstreetmap.org/copyright)
-
-## Architecture
-
-The inherited high-level class diagram is available at `images/OpenDroneID.png`.
+RID Guard-specific changes are documented in [CHANGELOG_RID_GUARD.md](CHANGELOG_RID_GUARD.md).
