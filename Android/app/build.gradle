@@ -19,7 +19,7 @@ def releaseSigningConfigured = false
 android {
     def versionMajor = 3
     def versionMinor = 7
-    def versionPatch = 0
+    def versionPatch = 1
 
     namespace 'org.opendroneid.android'
     compileSdk 36
