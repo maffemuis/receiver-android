@@ -81,7 +81,6 @@ public class OpenDroneIdDataManager {
     void receiveData(long timeNano, String macAddress, long macAddressLong, int rssi,
                      OpenDroneIdParser.Message<?> message, LogMessageEntry logMessageEntry, String transportType) {
 
-        // Handle connection
         boolean newAircraft = false;
         AircraftObject ac = aircraft.get(macAddressLong);
         if (ac == null) {
@@ -93,6 +92,7 @@ public class OpenDroneIdDataManager {
         ac.getConnection().lastSeen = currentTime;
         ac.getConnection().rssi = rssi;
         ac.getConnection().transportType = transportType;
+        ac.getConnection().recordTransport(transportType, currentTime);
         ac.getConnection().setTimestamp(timeNano);
         ac.getConnection().setMsgVersion(message.header.version);
         ac.connection.setValue(ac.connection.getValue());
@@ -107,7 +107,6 @@ public class OpenDroneIdDataManager {
         else
             handleMessages(ac, message);
 
-        // Restore the msgVersion in case the messages embedded in the pack had a different value
         logMessageEntry.setMsgVersion(ac.getConnection().getMsgVersion());
         callback.onAircraftUpdated(ac);
     }
@@ -163,8 +162,6 @@ public class OpenDroneIdDataManager {
         data.setIdType(raw.idType);
         data.setUasId(raw.uasId);
 
-        // This implementation can receive up-to two different types of Basic ID messages
-        // Find a free slot to store the current message in or overwrite old data of same type
         Identification id1 = ac.identification1.getValue();
         Identification id2 = ac.identification2.getValue();
         if (id1 == null || id2 == null)
