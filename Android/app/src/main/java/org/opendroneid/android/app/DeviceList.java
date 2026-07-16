@@ -20,7 +20,6 @@ import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.StateListDrawable;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -53,8 +52,6 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 public class DeviceList extends Fragment {
-    private static final String TAG = "DeviceList";
-
     private AircraftViewModel mModel;
     private ModelAdapter<AircraftObject, ListItem> mItemAdapter;
     private FastAdapter<ListItem> mAdapter;
@@ -160,8 +157,8 @@ public class DeviceList extends Fragment {
         private final TextView rssiView;
         private AircraftObject aircraft;
         private final View view;
-        private final ImageView iconImageView;
-        private final Drawable droneIcon;
+        private ImageView iconImageView;
+        private Drawable droneIcon;
         private final RidGuardSettings ridGuardSettings;
         private final Button ignoreButton;
 
