@@ -1,83 +1,104 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
- Copyright (C) 2019 Intel Corporation
-
- SPDX-License-Identifier: Apache-2.0
-
-!-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:padding="5dp"
-    android:orientation="horizontal">
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="6dp"
+    android:paddingTop="8dp"
+    android:paddingEnd="4dp"
+    android:paddingBottom="8dp">
 
     <ImageView
         android:id="@+id/drone_icon"
-        android:layout_width="32dp"
-        android:layout_height="32dp"
-        android:src="@mipmap/ic_plane_icon"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
         android:layout_gravity="center"
-        android:contentDescription="@string/drone_icon_content_description"/>
+        android:contentDescription="@string/drone_icon_content_description"
+        android:src="@mipmap/ic_plane_icon" />
 
     <LinearLayout
         android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="4dp"
         android:layout_weight="1"
-        android:layout_margin="4dp"
-        android:layout_height="match_parent"
         android:orientation="vertical">
 
         <TextView
-            tools:text="text"
             android:id="@+id/aircraftName"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:ellipsize="middle"
+            android:maxLines="1"
             android:textAppearance="?attr/textAppearanceListItem"
-            android:textSize="16dp"
-            tools:ignore="SpUsage" />
+            android:textSize="16sp"
+            android:textStyle="bold"
+            tools:text="1581FR1DGUARDDEM0001" />
 
         <TextView
-            tools:text="small"
+            android:id="@+id/aircraftProfile"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            tools:text="Helikopter/multirotor · C1 · DJI" />
+
+        <TextView
+            android:id="@+id/aircraftProfileDetail"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#666666"
+            android:textSize="12sp"
+            tools:text="Categorie Open · serienummer" />
+
+        <TextView
             android:id="@+id/aircraftFun"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textSize="12dp"
-            tools:ignore="SpUsage" />
+            android:layout_marginTop="2dp"
+            android:textSize="12sp"
+            tools:text="42 m boven Takeoff, 9 m/s, ~125 m afstand" />
 
         <TextView
-            tools:text="metrics"
             android:id="@+id/aircraftMetrics"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textSize="12dp"
-            tools:ignore="SpUsage" />
+            android:textSize="12sp"
+            tools:text="125 m · Δalt 42 m · v 8,5 m/s · hdg 90° · 1s" />
     </LinearLayout>
 
     <TextView
         android:id="@+id/rssi"
-        android:layout_width="50dp"
-        android:layout_height="match_parent"
+        android:layout_width="72dp"
+        android:layout_height="wrap_content"
         android:gravity="center"
-        android:textSize="10dp"
-        tools:ignore="SpUsage" />
+        android:maxLines="3"
+        android:textAlignment="center"
+        android:textSize="10sp"
+        tools:text="BT5\n-54 dBm\n12 msg" />
 
     <LinearLayout
         android:layout_width="wrap_content"
-        android:layout_height="match_parent"
+        android:layout_height="wrap_content"
         android:orientation="vertical">
 
         <Button
             android:id="@+id/modButton"
             style="@style/Widget.AppCompat.Button.Borderless"
-            android:layout_width="80dp"
+            android:layout_width="72dp"
             android:layout_height="wrap_content"
+            android:minHeight="40dp"
             android:text="@string/info" />
 
         <Button
             android:id="@+id/ignoreButton"
             style="@style/Widget.AppCompat.Button.Borderless"
-            android:layout_width="80dp"
+            android:layout_width="72dp"
             android:layout_height="wrap_content"
+            android:minHeight="40dp"
             android:text="@string/rid_guard_ignore_30m" />
     </LinearLayout>
 </LinearLayout>
