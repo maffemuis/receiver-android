@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rid_guard_settings_title">Instellingen</string>
+    <string name="rid_guard_altitude_window_summary">Waarschuw alleen als het hoogteverschil binnen dit venster valt.</string>
+    <string name="rid_guard_value_meters">%1$s m</string>
+    <string name="rid_guard_value_seconds">%1$s sec.</string>
+    <string name="rid_guard_value_hours">%1$s uur</string>
+    <string name="rid_guard_value_not_set">Niet ingesteld</string>
+    <string name="rid_guard_ignore_none">Geen drone-ID’s ingesteld.</string>
+    <plurals name="rid_guard_ignore_count">
+        <item quantity="one">%1$d drone-ID ingesteld</item>
+        <item quantity="other">%1$d drone-ID’s ingesteld</item>
+    </plurals>
+    <string name="rid_guard_version">Versie</string>
+</resources>
