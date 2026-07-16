@@ -5,22 +5,54 @@
  *
  */
 apply plugin: 'com.android.application'
+
+import java.util.Properties
+
+final Properties keystoreProperties = new Properties()
+final File keystorePropertiesFile = rootProject.file('keystore.properties')
+if (keystorePropertiesFile.exists()) {
+    keystorePropertiesFile.withInputStream { stream -> keystoreProperties.load(stream) }
+}
+
+def releaseSigningConfigured = false
+
 android {
     def versionMajor = 3
-    def versionMinor = 6
+    def versionMinor = 7
     def versionPatch = 0
+
+    namespace 'org.opendroneid.android'
     compileSdk 36
 
     defaultConfig {
         applicationId "org.opendroneid.ridguard"
         minSdkVersion 21
-        targetSdkVersion 35
+        targetSdkVersion 36
         versionCode versionMajor * 10000 + versionMinor * 100 + versionPatch
         versionName "${versionMajor}.${versionMinor}.${versionPatch}"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
+
+    signingConfigs {
+        release {
+            def releaseStoreFile = System.getenv('RIDGUARD_KEYSTORE_PATH') ?: keystoreProperties.getProperty('storeFile')
+            def releaseStorePassword = System.getenv('RIDGUARD_KEYSTORE_PASSWORD') ?: keystoreProperties.getProperty('storePassword')
+            def releaseKeyAlias = System.getenv('RIDGUARD_KEY_ALIAS') ?: keystoreProperties.getProperty('keyAlias')
+            def releaseKeyPassword = System.getenv('RIDGUARD_KEY_PASSWORD') ?: keystoreProperties.getProperty('keyPassword')
+
+            if (releaseStoreFile && releaseStorePassword && releaseKeyAlias && releaseKeyPassword) {
+                storeFile file(releaseStoreFile)
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+                releaseSigningConfigured = true
+            }
+        }
+    }
+
     buildTypes {
         debug {
+            applicationIdSuffix ".debug"
             versionNameSuffix ".debug"
             resValue "string", "app_version", "${defaultConfig.versionName}${versionNameSuffix}"
 
@@ -36,6 +68,10 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
 
+            if (releaseSigningConfigured) {
+                signingConfig signingConfigs.release
+            }
+
             if (project.hasProperty('org.gradle.project.map')) {
                 buildConfigField "boolean", "USE_GOOGLE_MAPS", "true"
             } else {
@@ -43,17 +79,26 @@ android {
             }
         }
     }
-    compileOptions {
-        sourceCompatibility = 1.8
-        targetCompatibility = 1.8
+
+    buildFeatures {
+        buildConfig true
     }
-    namespace 'org.opendroneid.android'
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+
+    testOptions {
+        unitTests.returnDefaultValues = true
+    }
 }
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 
     implementation 'androidx.legacy:legacy-support-v4:1.0.0'
+    implementation 'androidx.core:core:1.16.0'
     implementation 'com.google.android.material:material:1.12.0'
     implementation 'com.mikepenz:fastadapter:3.3.1'
     implementation 'com.mikepenz:fastadapter-commons:3.3.1'
@@ -67,13 +112,9 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
 
-//    The below if-else works, but will then fail to compile the AircraftMapView.java or
-//    AircraftOsMapView.java file. How to properly variate this is unclear.
-//    if (project.hasProperty('org.gradle.project.map')) {
-        implementation 'com.google.android.gms:play-services-maps:19.2.0'
-        implementation 'com.google.android.gms:play-services-location:21.3.0'
-//    } else {
-        implementation 'androidx.preference:preference:1.2.1'
-        implementation 'org.osmdroid:osmdroid-android:6.1.20'
-//    }
+    // Both map implementations are compiled; BuildConfig.USE_GOOGLE_MAPS controls which one is used.
+    implementation 'com.google.android.gms:play-services-maps:19.2.0'
+    implementation 'com.google.android.gms:play-services-location:21.3.0'
+    implementation 'androidx.preference:preference:1.2.1'
+    implementation 'org.osmdroid:osmdroid-android:6.1.20'
 }
