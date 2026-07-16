@@ -1,28 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
- Copyright (C) 2019 Intel Corporation
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
 
- SPDX-License-Identifier: Apache-2.0
+    <org.osmdroid.views.MapView
+        android:id="@+id/map"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
 
- Writeing: GANCHI
- TWITTER: @_ganchi
- https://ganchi.rdy.jp/
- Produced by Mac@Multiprotocol
-!-->
+    <Button
+        android:id="@+id/map_my_location"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="12dp"
+        android:minHeight="44dp"
+        android:text="@string/rid_guard_map_my_location" />
 
-<androidx.constraintlayout.widget.ConstraintLayout
-	xmlns:android="http://schemas.android.com/apk/res/android"
-	xmlns:tools="http://schemas.android.com/tools"
-	android:layout_width="match_parent"
-	android:layout_height="match_parent">
-
-	<LinearLayout
-		android:orientation="vertical"
-		android:layout_width="match_parent"
-		android:layout_height="match_parent">
-		<org.osmdroid.views.MapView android:id="@+id/map"
-			android:layout_width="match_parent"
-			android:layout_height="match_parent" />
-	</LinearLayout>
-
-</androidx.constraintlayout.widget.ConstraintLayout>
+</FrameLayout>
