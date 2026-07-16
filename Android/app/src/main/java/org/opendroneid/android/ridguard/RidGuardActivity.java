@@ -12,7 +12,6 @@ import android.content.Intent;
 import android.net.ConnectivityManager;
 import android.net.NetworkCapabilities;
 import android.net.Uri;
-import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -28,6 +27,8 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.lifecycle.ViewModelProvider;
+
+import com.google.android.material.appbar.MaterialToolbar;
 
 import org.opendroneid.android.R;
 import org.opendroneid.android.app.AircraftOsMapView;
@@ -82,7 +83,12 @@ public class RidGuardActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        RidGuardEdgeToEdge.enable(this);
         setContentView(R.layout.activity_rid_guard);
+
+        MaterialToolbar toolbar = findViewById(R.id.rid_guard_toolbar);
+        setSupportActionBar(toolbar);
+        RidGuardEdgeToEdge.apply(toolbar, findViewById(R.id.rid_guard_scroll));
 
         repository = RidGuardRepository.getInstance(this);
         aircraftViewModel = new ViewModelProvider(this).get(AircraftViewModel.class);
