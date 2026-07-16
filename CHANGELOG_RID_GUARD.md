@@ -1,5 +1,17 @@
 # RID Guard Changelog
 
+## 3.8.0 (test)
+- Added valid decoded-packet counters for Bluetooth Legacy, Bluetooth 5 Long Range, Wi-Fi Beacon and Wi-Fi Aware/NAN.
+- Shows the last transport, RSSI and total valid packet count for each detected aircraft.
+- Displays the official Remote ID aircraft category, including multirotor, fixed-wing and Hybrid VTOL.
+- Displays EU operation category and C0–C6 class when the aircraft broadcasts those fields.
+- Distinguishes serial-number, registration, UTM and session identifiers.
+- Added conservative ANSI/CTA-2063 serial validation and documented manufacturer-prefix recognition for DJI and Dronetag.
+- Never guesses an exact consumer drone model when Remote ID does not provide enough evidence.
+- Added a test mode with two clearly marked moving synthetic aircraft for radar, map, alert and classification checks.
+- Test aircraft are excluded from normal detection logging and can be removed immediately with **Testmodus stoppen**.
+- Added unit tests for Remote ID aircraft classification, EU class mapping and manufacturer-prefix handling.
+
 ## 3.7.2 (test)
 - Replaced the legacy Android action bar with inset-aware Material toolbars.
 - Prevented status, settings categories and scrolling content from appearing behind Android 16 system bars.
