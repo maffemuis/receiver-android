@@ -12,6 +12,7 @@ on:
 
 permissions:
   contents: read
+  statuses: write
 
 concurrency:
   group: android-test-${{ github.ref }}
@@ -25,6 +26,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Mark Android build pending
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --method POST "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" \
+            -f state=pending \
+            -f context='rid-guard/android-build' \
+            -f description='Android tests and APK build are running'
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -64,3 +74,23 @@ jobs:
           path: dist/
           if-no-files-found: error
           retention-days: 14
+
+      - name: Mark Android build successful
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --method POST "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" \
+            -f state=success \
+            -f context='rid-guard/android-build' \
+            -f description='Tests passed and RID-Guard-test.apk was built'
+
+      - name: Mark Android build failed
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --method POST "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" \
+            -f state=failure \
+            -f context='rid-guard/android-build' \
+            -f description='Android tests or APK build failed'
