@@ -45,7 +45,7 @@ Feature branches and pull requests run `.github/workflows/android-apk.yml`. A su
 
 The debug application ID is `org.opendroneid.ridguard.debug`, so the test app can exist next to the later production app.
 
-The test workflow keeps its test-only debug signing identity in the GitHub Actions cache. The first 3.7.1 test APK using this setup may require removing an older RID Guard test build once. Subsequent cached test builds should install as normal updates. This test identity is never used for the production release.
+The test workflow keeps its test-only debug signing identity in the GitHub Actions cache. When moving from a test APK built before 3.7.1 to 3.7.1, Android may report that the app cannot be installed because the older APK used another temporary debug signature. Remove only the old **RID Guard test app** once and then install 3.7.1. Future cached test builds should install as normal updates. The production release uses a separate private signing key.
 
 To sideload on Samsung:
 
