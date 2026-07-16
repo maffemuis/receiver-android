@@ -20,15 +20,14 @@ import androidx.core.content.ContextCompat;
 
 /**
  * Centralized capability and permission checks used by the UI and scanner service.
- * Keeping these checks in one place prevents Android-version-specific behavior from
- * drifting between activities, services and individual scanners.
  */
 public final class RidGuardDeviceStatus {
     private RidGuardDeviceStatus() {
     }
 
     public static BluetoothAdapter getBluetoothAdapter(Context context) {
-        BluetoothManager manager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
+        BluetoothManager manager =
+                (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
         return manager != null ? manager.getAdapter() : null;
     }
 
@@ -47,7 +46,11 @@ public final class RidGuardDeviceStatus {
                 != PackageManager.PERMISSION_GRANTED) {
             return false;
         }
-        return adapter.isEnabled();
+        try {
+            return adapter.isEnabled();
+        } catch (SecurityException ignored) {
+            return false;
+        }
     }
 
     public static boolean supportsBluetoothLongRange(Context context) {
@@ -55,7 +58,12 @@ public final class RidGuardDeviceStatus {
         if (adapter == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
             return false;
         }
-        return adapter.isLeCodedPhySupported() && adapter.isLeExtendedAdvertisingSupported();
+        try {
+            return adapter.isLeCodedPhySupported()
+                    && adapter.isLeExtendedAdvertisingSupported();
+        } catch (SecurityException ignored) {
+            return false;
+        }
     }
 
     public static boolean isWifiEnabled(Context context) {
@@ -73,12 +81,14 @@ public final class RidGuardDeviceStatus {
         if (!supportsWifiAware(context)) {
             return false;
         }
-        WifiAwareManager manager = (WifiAwareManager) context.getSystemService(Context.WIFI_AWARE_SERVICE);
+        WifiAwareManager manager =
+                (WifiAwareManager) context.getSystemService(Context.WIFI_AWARE_SERVICE);
         return manager != null && manager.isAvailable();
     }
 
     public static boolean isLocationEnabled(Context context) {
-        LocationManager manager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
+        LocationManager manager =
+                (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
         if (manager == null) {
             return false;
         }
@@ -127,8 +137,12 @@ public final class RidGuardDeviceStatus {
     }
 
     public static boolean isIgnoringBatteryOptimizations(Context context) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            return true;
+        }
         PowerManager manager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
-        return manager != null && manager.isIgnoringBatteryOptimizations(context.getPackageName());
+        return manager != null
+                && manager.isIgnoringBatteryOptimizations(context.getPackageName());
     }
 
     public static boolean isReadyForScanning(Context context) {
