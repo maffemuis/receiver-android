@@ -70,7 +70,7 @@ public class RidGuardSettingsActivity extends AppCompatActivity {
 
             if (ignoredIds != null) {
                 ignoredIds.setSummaryProvider(preference -> {
-                    String value = preference.getText();
+                    String value = ((EditTextPreference) preference).getText();
                     if (value == null || value.trim().isEmpty()) {
                         return getString(R.string.rid_guard_ignore_none);
                     }
@@ -101,7 +101,7 @@ public class RidGuardSettingsActivity extends AppCompatActivity {
                 return;
             }
             preference.setSummaryProvider(item -> {
-                String value = item.getText();
+                String value = ((EditTextPreference) item).getText();
                 if (value == null || value.trim().isEmpty()) {
                     return getString(R.string.rid_guard_value_not_set);
                 }
