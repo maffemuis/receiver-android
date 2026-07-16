@@ -24,7 +24,8 @@ public final class RidGuardEdgeToEdge {
     }
 
     public static void enable(AppCompatActivity activity) {
-        WindowCompat.enableEdgeToEdge(activity.getWindow());
+        // enableEdgeToEdge() was added in AndroidX Core 1.17; this project currently uses 1.16.
+        WindowCompat.setDecorFitsSystemWindows(activity.getWindow(), false);
         WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(
                 activity.getWindow(), activity.getWindow().getDecorView());
         controller.setAppearanceLightStatusBars(false);
