@@ -10,6 +10,7 @@
 - Added a persistent **Mijn locatie** button and on-map zoom controls.
 - Keeps the user's map position unless a drone is selected explicitly.
 - Added a stable cached signing identity for the separate debug application package.
+- Verified unit tests, APK assembly, APK signature and artifact checksum in GitHub Actions.
 
 ## 3.7.0 (test)
 - Targeted Android 16 / API 36 and introduced a separate debug application ID.
