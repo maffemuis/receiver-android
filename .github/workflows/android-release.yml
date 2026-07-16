@@ -79,7 +79,7 @@ jobs:
           set -euo pipefail
           mkdir -p dist
           cp Android/app/build/outputs/apk/release/app-release.apk dist/RID-Guard.apk
-          sha256sum dist/RID-Guard.apk > dist/RID-Guard.apk.sha256
+          (cd dist && sha256sum RID-Guard.apk > RID-Guard.apk.sha256)
 
       - name: Verify APK signature
         run: apksigner verify --verbose --print-certs dist/RID-Guard.apk
