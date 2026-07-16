@@ -66,6 +66,15 @@
                 android:textSize="15sp" />
 
             <TextView
+                android:id="@+id/rid_guard_received_stats"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="@string/rid_guard_received_stats_default"
+                android:textColor="#555555"
+                android:textSize="13sp" />
+
+            <TextView
                 android:id="@+id/rid_guard_last_scan"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -158,6 +167,13 @@
                     android:layout_weight="1"
                     android:text="@string/rid_guard_battery" />
             </LinearLayout>
+
+            <Button
+                android:id="@+id/rid_guard_demo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/rid_guard_demo_start" />
 
             <TextView
                 android:layout_width="match_parent"
