@@ -1,3 +1,8 @@
 Android/.idea
 Android/keystore.properties
+*.jks
+*.keystore
+*.p12
+*.base64
+*.apk
 .DS_Store
