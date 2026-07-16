@@ -4,6 +4,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import androidx.arch.core.executor.testing.InstantTaskExecutorRule;
+
+import org.junit.Rule;
 import org.junit.Test;
 import org.opendroneid.android.data.AircraftObject;
 import org.opendroneid.android.data.Identification;
@@ -12,6 +15,9 @@ import org.opendroneid.android.data.SystemData;
 import java.nio.charset.StandardCharsets;
 
 public class RidGuardAircraftProfileTest {
+    @Rule
+    public final InstantTaskExecutorRule instantTaskExecutorRule = new InstantTaskExecutorRule();
+
     @Test
     public void recognizesDocumentedDjiPrefixAndEuClass() {
         AircraftObject aircraft = createAircraft("1581FR1DGUARDDEM0001", 2, 1, 1, 2);
