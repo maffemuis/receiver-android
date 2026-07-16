@@ -1,12 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
- Copyright (C) 2019 Intel Corporation
-
- SPDX-License-Identifier: Apache-2.0
-
-!-->
-<androidx.recyclerview.widget.RecyclerView xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:id="@+id/device_list">
-</androidx.recyclerview.widget.RecyclerView>
+    android:layout_height="wrap_content"
+    android:minHeight="104dp">
+
+    <TextView
+        android:id="@+id/device_list_empty"
+        android:layout_width="match_parent"
+        android:layout_height="104dp"
+        android:gravity="center"
+        android:padding="16dp"
+        android:text="@string/rid_guard_no_drones"
+        android:textAlignment="center"
+        android:textColor="#777777" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/device_list"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:nestedScrollingEnabled="false" />
+
+</FrameLayout>
