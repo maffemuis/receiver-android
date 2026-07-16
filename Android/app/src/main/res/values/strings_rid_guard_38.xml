@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="rid_guard_received_stats_default">Werkelijk ontvangen: BT4 0 · BT5 0 · Wi-Fi 0 · NAN 0</string>
-    <string name="rid_guard_received_stats">Werkelijk ontvangen: %1$s</string>
+    <string name="rid_guard_received_stats_default">Geldige pakketten: BT4 0 · BT5 0 · Wi-Fi 0 · NAN 0</string>
+    <string name="rid_guard_received_stats">Geldige pakketten: %1$s</string>
     <string name="rid_guard_demo_start">Testmodus starten</string>
     <string name="rid_guard_demo_stop">Testmodus stoppen</string>
     <string name="rid_guard_demo_started">Testmodus actief: twee bewegende testdrones zijn toegevoegd.</string>
     <string name="rid_guard_demo_stopped">Testmodus gestopt.</string>
     <string name="rid_guard_state_demo">Testmodus is actief</string>
+    <string name="rid_guard_last_demo_value">Laatste testupdate: %1$d sec. geleden</string>
 </resources>
