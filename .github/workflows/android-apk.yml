@@ -1,13 +1,26 @@
-name: Build APK
+name: Android test build
 
 on:
   push:
-    branches: [ "master" ]
+    branches:
+      - master
+      - "agent/**"
+  pull_request:
+    branches:
+      - master
   workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-test-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
@@ -18,32 +31,36 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
+          cache: gradle
+          cache-dependency-path: |
+            Android/*.gradle
+            Android/app/*.gradle
+            Android/gradle/wrapper/gradle-wrapper.properties
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Locate Gradle wrapper
-        shell: bash
-        run: |
-          set -e
-          GW="$(find . -maxdepth 6 -type f -name gradlew -print -quit)"
-          if [ -z "$GW" ]; then
-            echo "ERROR: gradlew not found in repo. Commit the Gradle Wrapper or adjust project structure."
-            exit 1
-          fi
-          echo "Found gradlew at: $GW"
-          chmod +x "$GW"
-          echo "GW=$GW" >> "$GITHUB_ENV"
+      - name: Make Gradle wrapper executable
+        run: chmod +x Android/gradlew
 
-      - name: Build Debug APK
-        shell: bash
-        run: |
-          set -e
-          cd "$(dirname "$GW")"
-          ./gradlew assembleDebug
+      - name: Run unit tests
+        working-directory: Android
+        run: ./gradlew testDebugUnitTest --stacktrace
 
-      - name: Upload APK artifact
+      - name: Build test APK
+        working-directory: Android
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Prepare APK
+        run: |
+          mkdir -p dist
+          cp Android/app/build/outputs/apk/debug/app-debug.apk dist/RID-Guard-test.apk
+          sha256sum dist/RID-Guard-test.apk > dist/RID-Guard-test.apk.sha256
+
+      - name: Upload test APK
         uses: actions/upload-artifact@v4
         with:
-          name: RIDGuard-debug-apk
-          path: "**/build/outputs/apk/debug/*.apk"
+          name: RID-Guard-test-${{ github.run_number }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
