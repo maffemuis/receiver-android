@@ -34,7 +34,8 @@ jobs:
           gh api --method POST "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" \
             -f state=pending \
             -f context='rid-guard/android-build' \
-            -f description='Android tests and APK build are running'
+            -f description='Android tests and APK build are running' \
+            -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -83,7 +84,8 @@ jobs:
           gh api --method POST "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" \
             -f state=success \
             -f context='rid-guard/android-build' \
-            -f description='Tests passed and RID-Guard-test.apk was built'
+            -f description='Tests passed and RID-Guard-test.apk was built' \
+            -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
 
       - name: Mark Android build failed
         if: failure()
@@ -93,4 +95,5 @@ jobs:
           gh api --method POST "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" \
             -f state=failure \
             -f context='rid-guard/android-build' \
-            -f description='Android tests or APK build failed'
+            -f description='Android tests or APK build failed' \
+            -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
