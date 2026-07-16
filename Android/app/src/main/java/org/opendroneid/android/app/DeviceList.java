@@ -46,7 +46,6 @@ import com.mikepenz.fastadapter.select.SelectExtension;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.Locale;
@@ -57,6 +56,8 @@ public class DeviceList extends Fragment {
     private AircraftViewModel mModel;
     private ModelAdapter<AircraftObject, ListItem> mItemAdapter;
     private FastAdapter<ListItem> mAdapter;
+    private RecyclerView recyclerView;
+    private TextView emptyView;
 
     public static DeviceList newInstance() {
         return new DeviceList();
@@ -65,8 +66,17 @@ public class DeviceList extends Fragment {
     private void subscribeToModel(AircraftViewModel model) {
         mModel = model;
         final Observer<Set<AircraftObject>> listObserver = aircraftList -> {
-            if (aircraftList == null)
+            boolean isEmpty = aircraftList == null || aircraftList.isEmpty();
+            if (emptyView != null) {
+                emptyView.setVisibility(isEmpty ? View.VISIBLE : View.GONE);
+            }
+            if (recyclerView != null) {
+                recyclerView.setVisibility(isEmpty ? View.GONE : View.VISIBLE);
+            }
+            if (aircraftList == null) {
+                mItemAdapter.setNewList(new ArrayList<>());
                 return;
+            }
             Log.d(TAG, "DeviceList onChanged: " + aircraftList);
             mItemAdapter.setNewList(new ArrayList<>(aircraftList));
         };
@@ -101,29 +111,27 @@ public class DeviceList extends Fragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         ViewGroup viewGroup = (ViewGroup) inflater.inflate(R.layout.aircraft_list, container, false);
-        // Set CustomAdapter as the adapter for RecyclerView.
-        // Create the ItemAdapter holding your Items
 
         mItemAdapter = new ModelAdapter<>(ListItem::new);
-
-        // Create the managing FastAdapter, by passing in the itemAdapter
         mAdapter = FastAdapter.with(mItemAdapter);
         mAdapter.setHasStableIds(true);
         mAdapter.withSelectable(true);
 
         mAdapter.withSelectionListener((item, selected) -> {
-            Log.d(TAG, "onSelectionChanged: "+item + " selected="+selected);
-            if (selected && item != null) {
+            Log.d(TAG, "onSelectionChanged: " + item + " selected=" + selected);
+            if (selected && item != null && mModel != null) {
                 if (mModel.getActiveAircraft().getValue() != item.object) {
-                    // only set if different
                     mModel.setActiveAircraft(item.object);
                 }
             }
         });
-        RecyclerView mRecyclerView = viewGroup.findViewById(R.id.device_list);
-        mRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-        mRecyclerView.setAdapter(mAdapter);
-        mRecyclerView.scrollToPosition(0);
+
+        emptyView = viewGroup.findViewById(R.id.device_list_empty);
+        recyclerView = viewGroup.findViewById(R.id.device_list);
+        recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
+        recyclerView.setAdapter(mAdapter);
+        recyclerView.setNestedScrollingEnabled(false);
+        recyclerView.scrollToPosition(0);
 
         return viewGroup;
     }
@@ -146,9 +154,6 @@ public class DeviceList extends Fragment {
         newFragment.show(getParentFragmentManager(), "dialog");
     }
 
-    /**
-     * Provide a reference to the type of views that you are using (custom ViewHolder)
-     */
     public class AircraftViewHolder extends FastAdapter.ViewHolder<ListItem> {
         private final TextView textView;
         private final TextView textView2;
@@ -221,6 +226,7 @@ public class DeviceList extends Fragment {
             textView2.setText(null);
             metricsView.setText(null);
         }
+
         final Observer<Connection> connectionObserver = new Observer<Connection>() {
             @Override
             public void onChanged(Connection connection) {
@@ -230,6 +236,7 @@ public class DeviceList extends Fragment {
                 }
             }
         };
+
         final Observer<LocationData> locationObserver = new Observer<LocationData>() {
             @Override
             public void onChanged(LocationData locationData) {
@@ -323,5 +330,4 @@ public class DeviceList extends Fragment {
                     '}';
         }
     }
-
 }
