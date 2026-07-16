@@ -30,7 +30,10 @@ import org.opendroneid.android.bluetooth.OpenDroneIdDataManager;
 import org.opendroneid.android.bluetooth.WiFiBeaconScanner;
 import org.opendroneid.android.bluetooth.WiFiNaNScanner;
 import org.opendroneid.android.data.AircraftObject;
+import org.opendroneid.android.data.Connection;
 import org.opendroneid.android.data.LocationData;
+
+import java.util.Locale;
 
 public class RidGuardRepository extends OpenDroneIdDataManager.Callback {
     private static final String TAG = "RidGuardRepository";
@@ -42,6 +45,7 @@ public class RidGuardRepository extends OpenDroneIdDataManager.Callback {
     private final RidGuardLogger logger;
     private final OpenDroneIdDataManager dataManager;
     private final FusedLocationProviderClient fusedLocationProviderClient;
+    private final RidGuardDemoController demoController;
 
     private BluetoothScanner bluetoothScanner;
     private WiFiNaNScanner wiFiNaNScanner;
@@ -50,6 +54,7 @@ public class RidGuardRepository extends OpenDroneIdDataManager.Callback {
     private Location receiverLocation;
 
     private final MutableLiveData<Boolean> scanning = new MutableLiveData<>(false);
+    private final MutableLiveData<Boolean> demoMode = new MutableLiveData<>(false);
     private final MutableLiveData<Long> lastScanTime = new MutableLiveData<>(0L);
     private final MutableLiveData<String> lastError = new MutableLiveData<>();
     private final MutableLiveData<String> activeTransports = new MutableLiveData<>("None");
@@ -68,6 +73,7 @@ public class RidGuardRepository extends OpenDroneIdDataManager.Callback {
         logger = new RidGuardLogger(context, settings);
         dataManager = new OpenDroneIdDataManager(this);
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(context);
+        demoController = new RidGuardDemoController(this);
     }
 
     public OpenDroneIdDataManager getDataManager() {
@@ -76,6 +82,10 @@ public class RidGuardRepository extends OpenDroneIdDataManager.Callback {
 
     public LiveData<Boolean> getScanning() {
         return scanning;
+    }
+
+    public LiveData<Boolean> getDemoMode() {
+        return demoMode;
     }
 
     public LiveData<Long> getLastScanTime() {
@@ -96,6 +106,32 @@ public class RidGuardRepository extends OpenDroneIdDataManager.Callback {
 
     public RidGuardSettings getSettings() {
         return settings;
+    }
+
+    public synchronized void startDemoMode() {
+        if (demoController.isRunning()) {
+            return;
+        }
+        initLocationUpdates();
+        demoController.start();
+        demoMode.postValue(true);
+        clearError();
+    }
+
+    public synchronized void stopDemoMode() {
+        demoController.stop();
+        demoMode.postValue(false);
+        if (!Boolean.TRUE.equals(scanning.getValue())) {
+            stopLocationUpdates();
+        }
+    }
+
+    public synchronized void toggleDemoMode() {
+        if (demoController.isRunning()) {
+            stopDemoMode();
+        } else {
+            startDemoMode();
+        }
     }
 
     @SuppressLint("MissingPermission")
@@ -161,7 +197,9 @@ public class RidGuardRepository extends OpenDroneIdDataManager.Callback {
 
     public synchronized void stopScanning() {
         stopScannerObjects();
-        stopLocationUpdates();
+        if (!demoController.isRunning()) {
+            stopLocationUpdates();
+        }
         scanning.postValue(false);
         activeTransports.postValue("None");
         Log.i(TAG, "RID Guard scanning stopped");
@@ -204,6 +242,55 @@ public class RidGuardRepository extends OpenDroneIdDataManager.Callback {
         onAircraftUpdated(object);
     }
 
+    void onDemoAircraftUpdated(AircraftObject object) {
+        lastScanTime.postValue(System.currentTimeMillis());
+        Connection connection = object != null ? object.getConnection() : null;
+        if (connection != null && connection.totalMessages == 1) {
+            LocationData location = object.getLocation();
+            float distanceMeters = location != null ? location.getDistance() : 0f;
+            alertManager.maybeAlert(object, RidGuardDroneUtils.getPrimaryId(object),
+                    getAltitudeDiffMeters(location), distanceMeters);
+        }
+    }
+
+    public String buildDecodedTransportSummary() {
+        long bt4 = 0;
+        long bt5 = 0;
+        long beacon = 0;
+        long aware = 0;
+        long demo = 0;
+        long newestReal = 0;
+
+        for (AircraftObject aircraft : dataManager.aircraft.values()) {
+            Connection connection = aircraft.getConnection();
+            if (connection == null) {
+                continue;
+            }
+            bt4 += connection.bluetoothLegacyMessages;
+            bt5 += connection.bluetoothLongRangeMessages;
+            beacon += connection.wifiBeaconMessages;
+            aware += connection.wifiAwareMessages;
+            demo += connection.demoMessages;
+            newestReal = Math.max(newestReal, Math.max(
+                    Math.max(connection.lastBluetoothLegacySeen, connection.lastBluetoothLongRangeSeen),
+                    Math.max(connection.lastWifiBeaconSeen, connection.lastWifiAwareSeen)));
+        }
+
+        StringBuilder builder = new StringBuilder();
+        builder.append("BT4 ").append(bt4)
+                .append(" · BT5 ").append(bt5)
+                .append(" · Wi-Fi ").append(beacon)
+                .append(" · NAN ").append(aware);
+        if (demo > 0) {
+            builder.append(" · TEST ").append(demo);
+        }
+        if (newestReal > 0) {
+            long ageSeconds = Math.max(0L, (System.currentTimeMillis() - newestReal) / 1000L);
+            builder.append(String.format(Locale.US, " · echt %ds geleden", ageSeconds));
+        }
+        return builder.toString();
+    }
+
     private Double getAltitudeDiffMeters(LocationData locationData) {
         if (locationData == null || receiverLocation == null) {
             return null;
@@ -224,7 +311,9 @@ public class RidGuardRepository extends OpenDroneIdDataManager.Callback {
                 != PackageManager.PERMISSION_GRANTED) {
             return;
         }
-        stopLocationUpdates();
+        if (locationCallback != null) {
+            return;
+        }
         LocationRequest request = new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 3000L)
                 .setMinUpdateIntervalMillis(1500L)
                 .setMinUpdateDistanceMeters(1f)
