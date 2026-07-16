@@ -47,12 +47,14 @@ public class RidGuardActivity extends AppCompatActivity {
     private TextView statusText;
     private TextView deviceStatusText;
     private TextView transportText;
+    private TextView receivedStatsText;
     private TextView lastScanText;
     private TextView errorText;
     private View mapContainer;
     private View mapDisabledText;
     private Button startButton;
     private Button stopButton;
+    private Button demoButton;
     private Handler handler;
     private Runnable refreshRunnable;
     private boolean resumeStartAfterSettings;
@@ -96,12 +98,14 @@ public class RidGuardActivity extends AppCompatActivity {
         statusText = findViewById(R.id.rid_guard_status);
         deviceStatusText = findViewById(R.id.rid_guard_device_status);
         transportText = findViewById(R.id.rid_guard_transports);
+        receivedStatsText = findViewById(R.id.rid_guard_received_stats);
         lastScanText = findViewById(R.id.rid_guard_last_scan);
         errorText = findViewById(R.id.rid_guard_error);
         mapContainer = findViewById(R.id.rid_guard_map_container);
         mapDisabledText = findViewById(R.id.rid_guard_map_disabled);
         startButton = findViewById(R.id.rid_guard_start);
         stopButton = findViewById(R.id.rid_guard_stop);
+        demoButton = findViewById(R.id.rid_guard_demo);
 
         Button silenceButton = findViewById(R.id.rid_guard_silence);
         Button settingsButton = findViewById(R.id.rid_guard_settings);
@@ -110,6 +114,7 @@ public class RidGuardActivity extends AppCompatActivity {
 
         startButton.setOnClickListener(v -> requestPermissionsAndStart());
         stopButton.setOnClickListener(v -> stopScanning());
+        demoButton.setOnClickListener(v -> toggleDemoMode());
         silenceButton.setOnClickListener(v -> {
             repository.getSettings().setSilenceForMinutes(30);
             Toast.makeText(this, R.string.rid_guard_silenced, Toast.LENGTH_SHORT).show();
@@ -121,6 +126,7 @@ public class RidGuardActivity extends AppCompatActivity {
                 settingsLauncher.launch(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)));
 
         repository.getScanning().observe(this, scanning -> updateStatus());
+        repository.getDemoMode().observe(this, demo -> updateStatus());
         repository.getLastScanTime().observe(this, time -> updateStatus());
         repository.getLastError().observe(this, error -> updateStatus());
         repository.getActiveTransports().observe(this, transport -> updateStatus());
@@ -164,6 +170,15 @@ public class RidGuardActivity extends AppCompatActivity {
                 .commitAllowingStateLoss();
     }
 
+    private void toggleDemoMode() {
+        boolean wasRunning = Boolean.TRUE.equals(repository.getDemoMode().getValue());
+        repository.toggleDemoMode();
+        Toast.makeText(this, wasRunning
+                ? R.string.rid_guard_demo_stopped
+                : R.string.rid_guard_demo_started, Toast.LENGTH_LONG).show();
+        updateStatus();
+    }
+
     private void requestPermissionsAndStart() {
         List<String> permissions = new ArrayList<>();
         permissions.add(Manifest.permission.ACCESS_FINE_LOCATION);
@@ -191,7 +206,6 @@ public class RidGuardActivity extends AppCompatActivity {
             Toast.makeText(this, R.string.permission_required_toast, Toast.LENGTH_LONG).show();
             return;
         }
-        // Notification permission improves visibility but is not allowed to block scanning.
         ensureDeviceReadyAndStart();
     }
 
@@ -246,19 +260,25 @@ public class RidGuardActivity extends AppCompatActivity {
     }
 
     private void updateStatus() {
-        Boolean scanning = repository.getScanning().getValue();
-        boolean isScanning = Boolean.TRUE.equals(scanning);
+        boolean isScanning = Boolean.TRUE.equals(repository.getScanning().getValue());
+        boolean isDemo = Boolean.TRUE.equals(repository.getDemoMode().getValue());
         long lastScan = repository.getLastScanTime().getValue() != null
                 ? repository.getLastScanTime().getValue() : 0L;
 
-        statusText.setText(getString(isScanning
-                ? R.string.rid_guard_state_scanning
-                : R.string.rid_guard_state_idle));
+        if (isDemo && !isScanning) {
+            statusText.setText(R.string.rid_guard_state_demo);
+        } else {
+            statusText.setText(getString(isScanning
+                    ? R.string.rid_guard_state_scanning
+                    : R.string.rid_guard_state_idle));
+        }
         deviceStatusText.setText(buildDeviceStatusText());
 
         String transport = repository.getActiveTransports().getValue();
         transportText.setText(getString(R.string.rid_guard_transports,
                 transport == null ? getString(R.string.rid_guard_none) : transport));
+        receivedStatsText.setText(getString(R.string.rid_guard_received_stats,
+                repository.buildDecodedTransportSummary()));
 
         if (lastScan > 0) {
             long seconds = Math.max(0, (System.currentTimeMillis() - lastScan) / 1000L);
@@ -271,11 +291,12 @@ public class RidGuardActivity extends AppCompatActivity {
         errorText.setText(error);
         errorText.setVisibility(error == null || error.trim().isEmpty() ? View.GONE : View.VISIBLE);
 
-        findViewById(R.id.rid_guard_state_badge).setBackgroundResource(isScanning
+        findViewById(R.id.rid_guard_state_badge).setBackgroundResource(isScanning || isDemo
                 ? R.drawable.rid_guard_scanning_badge
                 : R.drawable.rid_guard_idle_badge);
         startButton.setEnabled(!isScanning);
         stopButton.setEnabled(isScanning);
+        demoButton.setText(isDemo ? R.string.rid_guard_demo_stop : R.string.rid_guard_demo_start);
     }
 
     private String buildDeviceStatusText() {
