@@ -1,5 +1,14 @@
 # RID Guard Changelog
 
+## 3.7.2 (test)
+- Replaced the legacy Android action bar with inset-aware Material toolbars.
+- Prevented status, settings categories and scrolling content from appearing behind Android 16 system bars.
+- Added a dedicated **Instellingen** title and back button.
+- Displayed current values for distance, altitude, cooldown and log-retention settings.
+- Disabled the altitude minimum and maximum fields until the height window is enabled.
+- Added an ignored-ID count and the installed app version to the settings screen.
+- Added downloadable Gradle diagnostics for failed GitHub Actions builds.
+
 ## 3.7.1 (test)
 - Replaced the fixed split-screen layout with one clear scrollable phone layout.
 - Removed the duplicate in-content app title and compacted the status area.
