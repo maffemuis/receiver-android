@@ -83,7 +83,19 @@ jobs:
 
       - name: Run unit tests
         working-directory: Android
-        run: ./gradlew testDebugUnitTest --stacktrace
+        shell: bash
+        run: |
+          set -o pipefail
+          ./gradlew testDebugUnitTest --stacktrace --console=plain 2>&1 | tee ../gradle-test.log
+
+      - name: Upload Gradle diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RID-Guard-build-log-${{ github.run_number }}
+          path: gradle-test.log
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Build test APK
         working-directory: Android
