@@ -7,7 +7,6 @@
 package org.opendroneid.android.bluetooth;
 
 import android.Manifest;
-import android.annotation.TargetApi;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -24,11 +23,10 @@ import android.net.wifi.aware.WifiAwareSession;
 import android.os.Build;
 import android.os.SystemClock;
 import android.util.Log;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
-import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import org.opendroneid.android.log.LogMessageEntry;
 import org.opendroneid.android.log.LogWriter;
@@ -37,135 +35,196 @@ import java.util.Arrays;
 import java.util.List;
 
 public class WiFiNaNScanner {
+    private static final String TAG = WiFiNaNScanner.class.getSimpleName();
 
     private final OpenDroneIdDataManager dataManager;
+    private final Context context;
+    private final BroadcastReceiver stateReceiver;
     private LogWriter logger;
-    private boolean wifiAwareSupported = false;
+    private boolean wifiAwareSupported;
+    private boolean receiverRegistered;
     private WifiAwareManager wifiAwareManager;
     private WifiAwareSession wifiAwareSession;
-    Context context;
-    private static final String TAG = WiFiNaNScanner.class.getSimpleName();
+    private SubscribeDiscoverySession discoverySession;
+    private String lastError;
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    public WiFiNaNScanner(Context context, OpenDroneIdDataManager dataManager, LogWriter logger) {
+        this.context = context.getApplicationContext();
+        this.dataManager = dataManager;
+        this.logger = logger;
+
+        stateReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context receiverContext, Intent intent) {
+                if (wifiAwareManager != null && wifiAwareManager.isAvailable()) {
+                    startScan();
+                } else {
+                    lastError = "Wi-Fi Aware is temporarily unavailable";
+                    closeSession();
+                }
+            }
+        };
+
+        if (!this.context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_WIFI_AWARE)) {
+            lastError = "Wi-Fi Aware is not supported by this phone";
+            return;
+        }
+
+        wifiAwareManager = (WifiAwareManager) this.context.getSystemService(Context.WIFI_AWARE_SERVICE);
+        if (wifiAwareManager == null) {
+            lastError = "Android did not provide a Wi-Fi Aware manager";
+            return;
+        }
+
+        wifiAwareSupported = true;
+        IntentFilter filter = new IntentFilter(WifiAwareManager.ACTION_WIFI_AWARE_STATE_CHANGED);
+        ContextCompat.registerReceiver(this.context, stateReceiver, filter,
+                ContextCompat.RECEIVER_NOT_EXPORTED);
+        receiverRegistered = true;
+    }
 
     public void setLogger(LogWriter logger) {
         this.logger = logger;
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.O)
-    public WiFiNaNScanner(Context context, OpenDroneIdDataManager dataManager, LogWriter logger) {
-        this.dataManager = dataManager;
-        this.logger = logger;
-
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O ||
-                !context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_WIFI_AWARE)) {
-            Log.i(TAG, "WiFi Aware is not supported.");
-            return;
-        }
-        wifiAwareSupported = true;
-        this.context = context;
-
-        wifiAwareManager = (WifiAwareManager) context.getSystemService(Context.WIFI_AWARE_SERVICE);
-        if (wifiAwareManager != null && !wifiAwareManager.isAvailable()) {
-            Toast.makeText(context, "WiFi Aware is currently not available", Toast.LENGTH_LONG).show();
-        }
-
-        IntentFilter filter = new IntentFilter(WifiAwareManager.ACTION_WIFI_AWARE_STATE_CHANGED);
-        BroadcastReceiver myReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                if (wifiAwareManager.isAvailable()) {
-                    Log.i(TAG, "WiFi Aware became available.");
-                    startScan();
-                } else {
-                    Toast.makeText(context, "WiFi Aware was lost. Code to properly handle this must be added.", Toast.LENGTH_LONG).show();
-                }
-            }
-        };
-        context.registerReceiver(myReceiver, filter);
+    public String getLastError() {
+        return lastError;
     }
 
-    @TargetApi(Build.VERSION_CODES.O)
     private final AttachCallback attachCallback = new AttachCallback() {
         @Override
         public void onAttached(WifiAwareSession session) {
-            if (!wifiAwareSupported)
+            if (!wifiAwareSupported) {
+                session.close();
                 return;
-
+            }
             wifiAwareSession = session;
             SubscribeConfig config = new SubscribeConfig.Builder()
                     .setServiceName("org.opendroneid.remoteid")
                     .build();
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                if (ActivityCompat.checkSelfPermission(context, Manifest.permission.NEARBY_WIFI_DEVICES) != PackageManager.PERMISSION_GRANTED) {
-                    Log.e(TAG, "onAttached: Missing NEARBY_WIFI_DEVICES permission");
-                    return;
-                }
-            }
-            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                Log.e(TAG, "onAttached: Missing ACCESS_FINE_LOCATION permission");
+            if (!hasPermissions()) {
+                lastError = "Nearby devices or location permission is missing for Wi-Fi Aware";
+                closeSession();
                 return;
             }
-            wifiAwareSession.subscribe(config, new DiscoverySessionCallback() {
-                @Override
-                public void onSubscribeStarted(@NonNull SubscribeDiscoverySession session) {
-                    Log.i(TAG, "onSubscribeStarted");
-                }
 
-                @Override
-                public void onServiceDiscovered(PeerHandle peerHandle, byte[] serviceSpecificInfo, List<byte[]> matchFilter) {
-                    Log.i(TAG, "onServiceDiscovered: " + serviceSpecificInfo.length + ": " + Arrays.toString(serviceSpecificInfo));
+            try {
+                wifiAwareSession.subscribe(config, new DiscoverySessionCallback() {
+                    @Override
+                    public void onSubscribeStarted(@NonNull SubscribeDiscoverySession session) {
+                        discoverySession = session;
+                        lastError = null;
+                        Log.i(TAG, "Wi-Fi Aware Remote ID subscription started");
+                    }
 
-                    String transportType = "NAN";
-                    LogMessageEntry logMessageEntry = new LogMessageEntry();
-                    long timeNano = SystemClock.elapsedRealtimeNanos();
-                    dataManager.receiveDataNaN(serviceSpecificInfo, peerHandle.hashCode(), timeNano, logMessageEntry, transportType);
+                    @Override
+                    public void onServiceDiscovered(PeerHandle peerHandle, byte[] serviceSpecificInfo,
+                                                    List<byte[]> matchFilter) {
+                        if (serviceSpecificInfo == null || serviceSpecificInfo.length == 0) {
+                            return;
+                        }
+                        LogMessageEntry logMessageEntry = new LogMessageEntry();
+                        long timeNano = SystemClock.elapsedRealtimeNanos();
+                        String transportType = "NAN";
+                        dataManager.receiveDataNaN(serviceSpecificInfo, peerHandle.hashCode(), timeNano,
+                                logMessageEntry, transportType);
 
-                    StringBuilder csvLog = logMessageEntry.getMessageLogEntry();
-                    if (logger != null)
-                        logger.logNaN(logMessageEntry.getMsgVersion(), timeNano, peerHandle.hashCode(),
-                                serviceSpecificInfo, transportType, csvLog);
-                }
-            }, null);
+                        StringBuilder csvLog = logMessageEntry.getMessageLogEntry();
+                        if (logger != null) {
+                            logger.logNaN(logMessageEntry.getMsgVersion(), timeNano, peerHandle.hashCode(),
+                                    serviceSpecificInfo, transportType, csvLog);
+                        }
+                        Log.d(TAG, "Wi-Fi Aware Remote ID: " + Arrays.toString(serviceSpecificInfo));
+                    }
+
+                    @Override
+                    public void onSessionConfigFailed() {
+                        lastError = "Wi-Fi Aware subscription configuration failed";
+                    }
+
+                    @Override
+                    public void onSessionTerminated() {
+                        discoverySession = null;
+                    }
+                }, null);
+            } catch (SecurityException exception) {
+                lastError = "Wi-Fi Aware permission was rejected by Android";
+                Log.w(TAG, lastError, exception);
+                closeSession();
+            }
         }
 
         @Override
         public void onAttachFailed() {
-            Toast.makeText(context, "wifiAware onAttachFailed. Code to properly handle this must be added.", Toast.LENGTH_LONG).show();
+            lastError = "Wi-Fi Aware could not attach";
+            Log.w(TAG, lastError);
         }
     };
 
-    @TargetApi(Build.VERSION_CODES.O)
     private final IdentityChangedListener identityChangedListener = new IdentityChangedListener() {
         @Override
         public void onIdentityChanged(byte[] mac) {
-            Byte[] macAddress = new Byte[mac.length];
-            int i = 0;
-            for (byte b: mac)
-                macAddress[i++] = b;
-            Log.i(TAG, "identityChangedListener: onIdentityChanged. MAC: " + Arrays.toString(macAddress));
+            Log.v(TAG, "Wi-Fi Aware identity changed");
         }
     };
 
-    @TargetApi(Build.VERSION_CODES.O)
-    public void startScan() {
-        if (!wifiAwareSupported)
-            return;
-        Log.i(TAG, "WiFi NaN attaching");
-        if (wifiAwareManager.isAvailable()) {
-            try {
-                wifiAwareManager.attach(attachCallback, identityChangedListener, null);
-            } catch (SecurityException e) {
-                e.printStackTrace();
-            }
+    public boolean startScan() {
+        if (!wifiAwareSupported || wifiAwareManager == null) {
+            return false;
+        }
+        if (!wifiAwareManager.isAvailable()) {
+            lastError = "Wi-Fi Aware is temporarily unavailable";
+            return false;
+        }
+        if (!hasPermissions()) {
+            lastError = "Nearby devices or location permission is missing for Wi-Fi Aware";
+            return false;
+        }
+        if (wifiAwareSession != null || discoverySession != null) {
+            return true;
+        }
+        try {
+            wifiAwareManager.attach(attachCallback, identityChangedListener, null);
+            return true;
+        } catch (SecurityException | IllegalStateException exception) {
+            lastError = "Wi-Fi Aware could not start: " + exception.getMessage();
+            Log.w(TAG, lastError, exception);
+            return false;
         }
     }
 
-    @TargetApi(Build.VERSION_CODES.O)
     public void stopScan() {
-        if (!wifiAwareSupported)
-            return;
-        Log.i(TAG, "WiFi NaN closing");
-        if (wifiAwareManager.isAvailable() && wifiAwareSession != null)
+        closeSession();
+        if (receiverRegistered) {
+            try {
+                context.unregisterReceiver(stateReceiver);
+            } catch (IllegalArgumentException ignored) {
+                // Receiver was already removed by Android.
+            }
+            receiverRegistered = false;
+        }
+    }
+
+    private boolean hasPermissions() {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            return false;
+        }
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
+                || ContextCompat.checkSelfPermission(context, Manifest.permission.NEARBY_WIFI_DEVICES)
+                == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void closeSession() {
+        if (discoverySession != null) {
+            discoverySession.close();
+            discoverySession = null;
+        }
+        if (wifiAwareSession != null) {
             wifiAwareSession.close();
+            wifiAwareSession = null;
+        }
     }
 }

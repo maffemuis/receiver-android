@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rid_guard_section_phone">Telefooncontrole</string>
+    <string name="rid_guard_section_radar">Radar</string>
+    <string name="rid_guard_section_map">Kaart</string>
+    <string name="rid_guard_no_drones">Nog geen Remote ID-drones gedetecteerd.</string>
+    <string name="rid_guard_map_my_location">Mijn locatie</string>
+    <string name="rid_guard_map_waiting_location">Locatie is nog niet beschikbaar.</string>
+</resources>
