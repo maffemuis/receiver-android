@@ -47,3 +47,4 @@ jobs:
         with:
           name: RIDGuard-debug-apk
           path: "**/build/outputs/apk/debug/*.apk"
+          retention-days: 3
